@@ -1,0 +1,2 @@
+%{"jsex": {:package, "2.0.0"},
+  "jsx": {:package, "2.0.3"}}
