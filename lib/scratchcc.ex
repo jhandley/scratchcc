@@ -1,49 +1,111 @@
 defmodule Scratchcc do
 
+  defmodule Context do
+    defstruct includes: [],
+              globals: [],
+              pollcalls: [],
+              initcode: [],
+              code: [],
+              scope_name: "",
+              scope_counter: 0
+  end
+
+  def doit(scripts) do
+    gen_scripts(%Context{}, scripts)
+  end
+
   @doc """
   Generate code for the "scripts" value for the both sprites and
   the stage.
   """
-  def gen_scripts(_context, []) do
-    {[], "",  []}
+  def gen_scripts(context, []) do
+    context
   end
   def gen_scripts(context, [script | scripts]) do
-    combine(gen_script(context, script), gen_scripts(context, scripts))
+    context
+      |> gen_script(script)
+      |> gen_scripts(scripts)
   end
 
   @doc """
   Generate code for one script.
   """
   def gen_script(context, [x, y, cmds]) do
-    script_context = "#{context}_#{x}_#{y}"
+    # TODO: figure out something on the scope_name
+    context
+      |> set_scope_name("scratch_#{x}_#{y}")
+      |> gen_script_thread(cmds)
+  end
 
-    gen_script_thread(script_context, cmds)
+  defp set_scope_name(context, name) do
+    %{context | :scope_name => name}
+  end
+
+  defp add_include(context, include_file) do
+    %{context | :includes => context.includes ++ [include_file]}
+  end
+
+  defp add_global(context, declaration) do
+    %{context | :globals => context.globals ++ [declaration]}
+  end
+
+  defp add_poll_call(context, call) do
+    %{context | :pollcalls => context.pollcalls ++ [call]}
+  end
+
+  defp add_init_code(context, code) do
+    %{context | :initcode => context.initcode ++ [code]}
+  end
+
+  defp push_code(context, code) do
+    %{context | :code => [code | context.code]}
+  end
+
+  defp pop_code(context) do
+    code = hd(context.code)
+    new_context = %{context | :code => tl(context.code)}
+    {new_context, code}
+  end
+
+  defp prefix(context) do
+    "#{context.scope_name}_#{context.scope_counter}"
+  end
+
+  defp inc_scope(context) do
+    %{context | :scope_counter => context.scope_counter + 1}
   end
 
   @doc """
   Generate the appropriate thread based on the "hat" block in the script
   """
   def gen_script_thread(context, [["whenGreenFlag"] | body]) do
-    globals = declare_protothread(context)
-    pollcall = declare_pollcall(context)
-    guts = gen_script_body(context, body, 0)
+    context = context
+      |> add_include("pt.h")
+      |> add_global("static struct pt #{context.scope_name}_pt;")
+      |> add_poll_call("#{context.scope_name}_thread(&#{context.scope_name}_pt);")
+      |> gen_script_body(body)
+
+    {context, body_code} = pop_code(context)
     code = """
-    PT_THREAD(#{context}_thread(struct pt *pt))
+    PT_THREAD(#{context.scope_name}_thread(struct pt *pt))
     {
     PT_BEGIN(pt);
-    #{elem(guts,1)}
+    #{body_code}
     PT_END(pt);
     }
     """
-    {globals ++ elem(guts,0), code, pollcall ++ elem(guts,2)}
+
+    context |> push_code(code)
   end
 
-  def gen_script_body(_context, [], _counter) do
-    {[], "", []}
+  def gen_script_body(context, []) do
+    context
   end
-  def gen_script_body(context, [block | rest], counter) do
-    combine(gen_script_block(context, block, counter),
-            gen_script_body(context, rest, counter + 1))
+  def gen_script_body(context, [block | rest]) do
+    context
+      |> gen_script_block(block)
+      |> inc_scope
+      |> gen_script_body(rest)
   end
 
   @doc """
@@ -51,81 +113,66 @@ defmodule Scratchcc do
   See http://wiki.scratch.mit.edu/wiki/Scratch_File_Format_(2.0)/Block_Selectors
   or the list of selectors.
   """
-  def gen_script_block(context, ["-", a, b], counter) do
-    gen_script_binary_op(context, "-", a, b, counter)
+  def gen_script_block(context, ["-", a, b]) do
+    gen_script_binary_op(context, "-", a, b)
   end
-  def gen_script_block(context, ["+", a, b], counter) do
-    gen_script_binary_op(context, "+", a, b, counter)
+  def gen_script_block(context, ["+", a, b]) do
+    gen_script_binary_op(context, "+", a, b)
   end
-  def gen_script_block(context, ["*", a, b], counter) do
-    gen_script_binary_op(context, "*", a, b, counter)
+  def gen_script_block(context, ["*", a, b]) do
+    gen_script_binary_op(context, "*", a, b)
   end
-  def gen_script_block(context, ["/", a, b], counter) do
-    gen_script_binary_op(context, "/", a, b, counter)
+  def gen_script_block(context, ["/", a, b]) do
+    gen_script_binary_op(context, "/", a, b)
   end
-  def gen_script_block(context, ["&", a, b], counter) do
-    gen_script_binary_op(context, "&&", a, b, counter)
+  def gen_script_block(context, ["&", a, b]) do
+    gen_script_binary_op(context, "&&", a, b)
   end
-  def gen_script_block(context, ["%", a, b], counter) do
-    gen_script_binary_op(context, "%", a, b, counter)
+  def gen_script_block(context, ["%", a, b]) do
+    gen_script_binary_op(context, "%", a, b)
   end
-  def gen_script_block(context, ["<", a, b], counter) do
-    gen_script_binary_op(context, "<", a, b, counter)
+  def gen_script_block(context, ["<", a, b]) do
+    gen_script_binary_op(context, "<", a, b)
   end
-  def gen_script_block(context, ["=", a, b], counter) do
-    gen_script_binary_op(context, "==", a, b, counter)
+  def gen_script_block(context, ["=", a, b]) do
+    gen_script_binary_op(context, "==", a, b)
   end
-  def gen_script_block(context, [">", a, b], counter) do
-    gen_script_binary_op(context, ">", a, b, counter)
+  def gen_script_block(context, [">", a, b]) do
+    gen_script_binary_op(context, ">", a, b)
   end
-  def gen_script_block(context, ["|", a, b], counter) do
-    gen_script_binary_op(context, "||", a, b, counter)
+  def gen_script_block(context, ["|", a, b]) do
+    gen_script_binary_op(context, "||", a, b)
   end
-  def gen_script_block(_context, x, _counter) when is_integer(x) do
-    {[], Integer.to_string(x), []}
+  def gen_script_block(context, x) when is_integer(x) do
+    context |> push_code(Integer.to_string(x))
   end
-  def gen_script_block(_context, x, _counter) when is_binary(x) do
-    {[], "\"" <> x <> "\"", []}
+  def gen_script_block(context, x) when is_binary(x) do
+    context |> push_code("\"#{x}\"")
   end
-  def gen_script_block(context, ["sqrt", x], counter) do
-    child_context = context <> ".#{counter}"
-    xguts = gen_script_block(child_context, x, 0)
-    code = "sqrt(#{elem(xguts,1)})"
-    {elem(xguts,0) ++ ["#include <math.h>"], code, elem(xguts,2)}
+  def gen_script_block(context, ["sqrt", x]) do
+    context = context |> gen_script_block(x)
+    {context, param_code} = pop_code(context)
+    context |> push_code("sqrt(#{param_code})")
   end
-  def gen_script_block(context, ["abs", x], counter) do
-    child_context = context <> ".#{counter}"
-    xguts = gen_script_block(child_context, x, 0)
-    code = "abs(#{elem(xguts,1)})"
-    {elem(xguts,0) ++ ["#include <stdlib.h>"], code, elem(xguts,2)}
+  def gen_script_block(context, ["abs", x]) do
+    context = context |> gen_script_block(x)
+    {context, param_code} = pop_code(context)
+    context |> push_code("abs(#{param_code})")
   end
-  def gen_script_block(context, ["say:", x], counter) do
-    child_context = context <> ".#{counter}"
-    xguts = gen_script_block(child_context, x, 0)
+  def gen_script_block(context, ["say:", x]) do
+    context = context |> gen_script_block(x)
     # TODO: if xguts is a int, then turn it into a string for this call
-    code = "Serial.write(#{elem(xguts,1)});\n"
-    {elem(xguts,0), code, elem(xguts,2)}
+    {context, param_code} = pop_code(context)
+    context |> push_code("Serial.write(#{param_code})")
   end
 
-  defp gen_script_binary_op(context, binary_op, a, b, counter) do
-    child_context = context <> ".#{counter}"
-    aguts = gen_script_block(child_context, a, 0)
-    bguts = gen_script_block(child_context, b, 1)
-    code = "((#{elem(aguts,1)}) " <> binary_op <> "(#{elem(bguts,1)}))"
-    {elem(aguts,0) ++ elem(bguts,0), code, elem(aguts,2) ++ elem(bguts,2)}
+  defp gen_script_binary_op(context, binary_op, a, b) do
+    context = context
+      |> gen_script_block(a)
+      |> gen_script_block(b)
+    {context, b_code} = pop_code(context)
+    {context, a_code} = pop_code(context)
+    context |> push_code("((#{a_code}) " <> binary_op <> "(#{b_code}))")
   end
 
-  defp combine(result1, result2) do
-    # There's got to be a clever way of doing this with zip or something...
-    {globals1, functions1, pollcall1} = result1
-    {globals2, functions2, pollcall2} = result2
-    {globals1 ++ globals2, functions1 <> functions2, pollcall1 ++ pollcall2 }
-  end
-
-  defp declare_protothread(context) do
-    ["static struct pt #{context}_pt;"]
-  end
-  defp declare_pollcall(context) do
-    ["#{context}_thread(&#{context}_pt);"]
-  end
 end
