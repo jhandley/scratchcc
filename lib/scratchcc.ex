@@ -223,7 +223,7 @@ defmodule Scratchcc do
   @doc """
   Generate the code for a non-hat block.
   See http://wiki.scratch.mit.edu/wiki/Scratch_File_Format_(2.0)/Block_Selectors
-  or the list of selectors.
+  for the list of selectors.
   """
   def gen_script_block(context, ["-", a, b]) do
     gen_script_binary_op(context, "-", a, b)
@@ -273,7 +273,7 @@ defmodule Scratchcc do
   end
   def gen_script_block(context, ["say:", x]) do
     context = context |> gen_script_block(x)
-    # TODO: if xguts is a int, then turn it into a string for this call
+    # TODO: if x is a int, then turn it into a string for this call
     {context, param_code} = pop_code(context)
     context
       |> add_init_code("Serial.begin(9600);")
