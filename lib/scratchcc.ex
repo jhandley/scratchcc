@@ -305,8 +305,8 @@ defmodule Scratchcc do
   end
 
   defp gpio_value("\"high\""), do: "HIGH"
-  defp gpio_value("\"High"), do: "HIGH"
-  defp gpio_value("\"HIGH"), do: "HIGH"
+  defp gpio_value("\"High\""), do: "HIGH"
+  defp gpio_value("\"HIGH\""), do: "HIGH"
   defp gpio_value("\"low\""), do: "LOW"
   defp gpio_value("\"Low\""), do: "LOW"
   defp gpio_value("\"LOW\""), do: "LOW"
