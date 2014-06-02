@@ -79,6 +79,7 @@ defmodule Scratchcc do
   def gen_object(context, obj) do
     context
       |> push_scope_name(obj["objName"])
+      |> gen_variables(obj["variables"])
       |> gen_scripts(obj["scripts"])
       |> pop_scope_name
   end
@@ -108,6 +109,26 @@ defmodule Scratchcc do
       |> push_scope_name("_#{x}_#{y}")
       |> gen_script_thread(cmds)
       |> pop_scope_name
+  end
+
+  defp gen_variables(context, nil) do
+    context
+  end
+  defp gen_variables(context, []) do
+    context
+  end
+  defp gen_variables(context, [var | rest]) do
+    context
+      |> gen_variable(var)
+      |> gen_variables(rest)
+  end
+
+  defp gen_variable(context, varmap) do
+    gen_variable(context, varmap["name"], varmap["value"])
+  end
+  defp gen_variable(context, <<"#out", pin :: binary>>, _value) do
+    context
+      |> add_init_code("pinMode(#{pin}, OUTPUT);")
   end
 
   defp push_scope_name(context, name) do
