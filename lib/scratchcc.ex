@@ -304,12 +304,14 @@ defmodule Scratchcc do
       |> push_code("digitalWrite(#{pin}, #{gpio_value(value_code)});\n")
   end
 
-  defp gpio_value("\"high\""), do: 1
-  defp gpio_value("\"High"), do: 1
-  defp gpio_value("\"low\""), do: 0
-  defp gpio_value("\"Low\""), do: 0
-  defp gpio_value(x) when is_integer(x) and x > 0, do: 1
-  defp gpio_value(x) when is_integer(x) and x == 0, do: 0
+  defp gpio_value("\"high\""), do: "HIGH"
+  defp gpio_value("\"High"), do: "HIGH"
+  defp gpio_value("\"HIGH"), do: "HIGH"
+  defp gpio_value("\"low\""), do: "LOW"
+  defp gpio_value("\"Low\""), do: "LOW"
+  defp gpio_value("\"LOW\""), do: "LOW"
+  defp gpio_value(x) when is_integer(x) and x > 0, do: "HIGH"
+  defp gpio_value(x) when is_integer(x) and x == 0, do: "LOW"
 
   defp gen_script_binary_op(context, binary_op, a, b) do
     context = context
