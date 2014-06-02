@@ -181,10 +181,18 @@ defmodule Scratchcc do
     context |> push_code(code)
   end
 
-  def gen_script_body(context, []) do
+  def gen_script_body(context, blocks) do
+    saved_code = context.code
+    context = %{context | code: []}
+      |> gen_script_body_impl(blocks)
+    new_code = List.foldl(context.code, "", &Kernel.<>/2)
+    %{context | code: [new_code | saved_code]}
+  end
+
+  defp gen_script_body_impl(context, []) do
     context
   end
-  def gen_script_body(context, [block | rest]) do
+  defp gen_script_body_impl(context, [block | rest]) do
     context
       |> gen_script_block(block)
       |> inc_scope
@@ -246,8 +254,41 @@ defmodule Scratchcc do
     context = context |> gen_script_block(x)
     # TODO: if xguts is a int, then turn it into a string for this call
     {context, param_code} = pop_code(context)
-    context |> push_code("Serial.write(#{param_code})")
+    context
+      |> add_init_code("Serial.begin(9600);")
+      |> push_code("Serial.write(#{param_code});")
   end
+  def gen_script_block(context, ["doForever", loop_contents]) do
+    context = context |> gen_script_body(loop_contents)
+    {context, loop_code} = pop_code(context)
+    context |> push_code("for (;;) {\n#{loop_code}\n}")
+  end
+  def gen_script_block(context, ["setVar:to:", varname, value]) do
+    context = context |> gen_script_block(value)
+    {context, value_code} = pop_code(context)
+    context |> gen_var_set(varname, value_code)
+  end
+  def gen_script_block(context, ["wait:elapsed:from:", seconds]) do
+    context = context |> gen_script_block(seconds)
+    {context, code} = pop_code(context)
+    waitvar = "#{scope_name(context)}_waittime"
+    context = context
+      |> add_global("static unsigned long #{waitvar};")
+      |> push_code("#{waitvar} = millis() + 1000 * (#{code});\nPT_WAIT_UNTIL(pt, millis() - #{waitvar} < 10000);\n")
+  end
+
+
+  defp gen_var_set(context, <<"#out", pin :: binary>>, value_code) do
+    context
+      |> push_code("digitalWrite(#{pin}, #{gpio_value(value_code)});\n")
+  end
+
+  defp gpio_value("\"high\""), do: 1
+  defp gpio_value("\"High"), do: 1
+  defp gpio_value("\"low\""), do: 0
+  defp gpio_value("\"Low\""), do: 0
+  defp gpio_value(x) when is_integer(x) and x > 0, do: 1
+  defp gpio_value(x) when is_integer(x) and x == 0, do: 0
 
   defp gen_script_binary_op(context, binary_op, a, b) do
     context = context

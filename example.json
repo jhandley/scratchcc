@@ -1,19 +1,10 @@
 {
 	"objName": "Stage",
 	"variables": [{
-			"name": "#gpio2",
+			"name": "#out13",
 			"value": 0,
 			"isPersistent": false
 		}],
-	"scripts": [[199,
-			86,
-			[["whenGreenFlag"],
-				["doForever",
-					[["call", "Set GPIO %n to %n", 1, 1],
-						["wait:elapsed:from:", 1],
-						["call", "Set GPIO %n to %n", 1, 0],
-						["wait:elapsed:from:", 1]]]]],
-		[559.3, 71.65, [["procDef", "Set GPIO %n to %n", ["number1", "number2"], [1, 1], false]]]],
 	"sounds": [{
 			"soundName": "pop",
 			"soundID": -1,
@@ -37,11 +28,14 @@
 	"videoAlpha": 0.5,
 	"children": [{
 			"objName": "Beetle",
-			"scripts": [[95,
-					101,
-					[["whenIReceive", "#gpio1"], ["say:", ["concatenate:with:", "hello ", ["readVariable", "#gpio2"]]]]],
-				[325, 86, [["whenGreenFlag"], ["broadcast:", "#gpio1"], ["say:", "Hello!"]]],
-				[36, 208, [["whenGreenFlag"], ["say:", ["-", 1, 2]]]]],
+			"scripts": [[338,
+					205,
+					[["whenGreenFlag"],
+						["doForever",
+							[["setVar:to:", "#out13", "high"],
+								["wait:elapsed:from:", 1],
+								["setVar:to:", "#out13", "low"],
+								["wait:elapsed:from:", 1]]]]]],
 			"sounds": [{
 					"soundName": "pop",
 					"soundID": -1,
@@ -59,8 +53,8 @@
 					"rotationCenterY": 38
 				}],
 			"currentCostumeIndex": 0,
-			"scratchX": -72,
-			"scratchY": 14,
+			"scratchX": -7,
+			"scratchY": 13,
 			"scale": 1,
 			"direction": 90,
 			"rotationStyle": "normal",
@@ -73,24 +67,24 @@
 		{
 			"target": "Stage",
 			"cmd": "getVar:",
-			"param": "#gpio2",
+			"param": "#out13",
 			"color": 15629590,
-			"label": "#gpio2",
+			"label": "#out13",
 			"mode": 1,
 			"sliderMin": 0,
 			"sliderMax": 100,
 			"isDiscrete": true,
 			"x": 5,
-			"y": 5,
+			"y": 32,
 			"visible": true
 		}],
 	"info": {
 		"spriteCount": 1,
 		"swfVersion": "v418",
-		"flashVersion": "LNX 13,0,0,214",
-		"userAgent": "Mozilla\/5.0 (X11; Linux x86_64) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/35.0.1916.114 Safari\/537.36",
 		"videoOn": false,
-		"scriptCount": 5,
-		"projectID": "22951621"
+		"userAgent": "Mozilla\/5.0 (X11; Linux x86_64) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/35.0.1916.114 Safari\/537.36",
+		"projectID": "22951621",
+		"scriptCount": 1,
+		"flashVersion": "LNX 13,0,0,214"
 	}
 }
