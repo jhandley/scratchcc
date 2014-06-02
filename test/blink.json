@@ -1,0 +1,90 @@
+{
+	"objName": "Stage",
+	"variables": [{
+			"name": "#out13",
+			"value": 0,
+			"isPersistent": false
+		}],
+	"sounds": [{
+			"soundName": "pop",
+			"soundID": -1,
+			"md5": "83a9787d4cb6f3b7632b4ddfebf74367.wav",
+			"sampleCount": 258,
+			"rate": 11025,
+			"format": ""
+		}],
+	"costumes": [{
+			"costumeName": "backdrop1",
+			"baseLayerID": -1,
+			"baseLayerMD5": "b61b1077b0ea1931abee9dbbfa7903ff.png",
+			"bitmapResolution": 2,
+			"rotationCenterX": 480,
+			"rotationCenterY": 360
+		}],
+	"currentCostumeIndex": 0,
+	"penLayerMD5": "5c81a336fab8be57adc039a8a2b33ca9.png",
+	"penLayerID": -1,
+	"tempoBPM": 60,
+	"videoAlpha": 0.5,
+	"children": [{
+			"objName": "Beetle",
+			"scripts": [[338,
+					205,
+					[["whenGreenFlag"],
+						["doForever",
+							[["setVar:to:", "#out13", "high"],
+								["wait:elapsed:from:", 1],
+								["setVar:to:", "#out13", "low"],
+								["wait:elapsed:from:", 1]]]]]],
+			"sounds": [{
+					"soundName": "pop",
+					"soundID": -1,
+					"md5": "83a9787d4cb6f3b7632b4ddfebf74367.wav",
+					"sampleCount": 258,
+					"rate": 11025,
+					"format": ""
+				}],
+			"costumes": [{
+					"costumeName": "beetle",
+					"baseLayerID": -1,
+					"baseLayerMD5": "e1ce8f153f011fdd52486c91c6ed594d.svg",
+					"bitmapResolution": 1,
+					"rotationCenterX": 43,
+					"rotationCenterY": 38
+				}],
+			"currentCostumeIndex": 0,
+			"scratchX": -7,
+			"scratchY": 13,
+			"scale": 1,
+			"direction": 90,
+			"rotationStyle": "normal",
+			"isDraggable": false,
+			"indexInLibrary": 1,
+			"visible": true,
+			"spriteInfo": {
+			}
+		},
+		{
+			"target": "Stage",
+			"cmd": "getVar:",
+			"param": "#out13",
+			"color": 15629590,
+			"label": "#out13",
+			"mode": 1,
+			"sliderMin": 0,
+			"sliderMax": 100,
+			"isDiscrete": true,
+			"x": 5,
+			"y": 32,
+			"visible": true
+		}],
+	"info": {
+		"spriteCount": 1,
+		"swfVersion": "v418",
+		"videoOn": false,
+		"userAgent": "Mozilla\/5.0 (X11; Linux x86_64) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/35.0.1916.114 Safari\/537.36",
+		"projectID": "22951621",
+		"scriptCount": 1,
+		"flashVersion": "LNX 13,0,0,214"
+	}
+}
