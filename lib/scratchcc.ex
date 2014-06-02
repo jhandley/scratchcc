@@ -42,7 +42,7 @@ defmodule Scratchcc do
               pollcalls: [],
               initcode: [],
               code: [],
-              scope_name: "",
+              scope_name: [],
               scope_counter: 0
   end
 
@@ -52,10 +52,44 @@ defmodule Scratchcc do
       |> CodeTemplate.generate
   end
 
+  def gen_from_json(json) do
+    {:ok, project} = JSEX.decode(json)
+    %Context{}
+      |> gen_project(project)
+      |> CodeTemplate.generate
+  end
+
+  defp gen_project(context, project) do
+    context
+      # Generate the stage
+      |> gen_object(project)
+      # Generate all the sprites
+      |> gen_objects(project["children"])
+  end
+
+  def gen_objects(context, []) do
+    context
+  end
+  def gen_objects(context, [obj | rest]) do
+    context
+      |> gen_object(obj)
+      |> gen_objects(rest)
+  end
+
+  def gen_object(context, obj) do
+    context
+      |> push_scope_name(obj["objName"])
+      |> gen_scripts(obj["scripts"])
+      |> pop_scope_name
+  end
+
   @doc """
   Generate code for the "scripts" value for the both sprites and
   the stage.
   """
+  def gen_scripts(context, nil) do
+    context
+  end
   def gen_scripts(context, []) do
     context
   end
@@ -71,12 +105,17 @@ defmodule Scratchcc do
   def gen_script(context, [x, y, cmds]) do
     # TODO: figure out something on the scope_name
     context
-      |> set_scope_name("scratch_#{x}_#{y}")
+      |> push_scope_name("_#{x}_#{y}")
       |> gen_script_thread(cmds)
+      |> pop_scope_name
   end
 
-  defp set_scope_name(context, name) do
-    %{context | :scope_name => name}
+  defp push_scope_name(context, name) do
+    %{context | :scope_name => [name | context.scope_name]}
+  end
+
+  defp pop_scope_name(context) do
+    %{context | :scope_name => tl(context.scope_name)}
   end
 
   defp add_include(context, include_file) do
@@ -105,8 +144,12 @@ defmodule Scratchcc do
     {new_context, code}
   end
 
+  defp scope_name(context) do
+    Enum.reduce(context.scope_name, "", &Kernel.<>/2)
+  end
+
   defp prefix(context) do
-    "#{context.scope_name}_#{context.scope_counter}"
+    "#{scope_name(context)}_#{context.scope_counter}"
   end
 
   defp inc_scope(context) do
@@ -117,16 +160,17 @@ defmodule Scratchcc do
   Generate the appropriate thread based on the "hat" block in the script
   """
   def gen_script_thread(context, [["whenGreenFlag"] | body]) do
+    prefix = scope_name(context)
     context = context
       |> add_include("\"pt.h\"")
-      |> add_global("static struct pt #{context.scope_name}_pt;")
-      |> add_init_code("PT_INIT(&#{context.scope_name}_pt);")
-      |> add_poll_call("#{context.scope_name}_thread(&#{context.scope_name}_pt);")
+      |> add_global("static struct pt #{prefix}_pt;")
+      |> add_init_code("PT_INIT(&#{prefix}_pt);")
+      |> add_poll_call("#{prefix}_thread(&#{prefix}_pt);")
       |> gen_script_body(body)
 
     {context, body_code} = pop_code(context)
     code = """
-    PT_THREAD(#{context.scope_name}_thread(struct pt *pt))
+    PT_THREAD(#{prefix}_thread(struct pt *pt))
     {
         PT_BEGIN(pt);
         #{body_code}
