@@ -14,7 +14,7 @@ defmodule CodeTemplate do
 <%= block %>
 <% end %>
 
-void init()
+void setup()
 {
 <%= for initcall <- Enum.uniq(context.initcode) do %>
     <%= initcall %>
