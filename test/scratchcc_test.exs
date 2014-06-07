@@ -1,21 +1,21 @@
 defmodule ScratchccTest do
   use ExUnit.Case
 
-  test "tones" do
-    {:ok, contents} = File.read("test/tones.json")
-    x = Scratchcc.gen_from_json(contents)
+  test "pacman" do
+    x = Scratchcc.gen_from_file("test/pacman.json")
     IO.inspect x
     File.write("tones.ino", x)
   end
 
   test "hello" do
-    {:ok, contents} = File.read("test/hello.json")
-    Scratchcc.gen_from_json(contents)
+    Scratchcc.gen_from_file("test/hello.json")
   end
 
   test "blink" do
-    {:ok, contents} = File.read("test/blink.json")
-    Scratchcc.gen_from_json(contents)
+    Scratchcc.gen_from_file("test/blink.json")
+  end
+  test "tones" do
+    Scratchcc.gen_from_file("test/tones.json")
   end
 
 end

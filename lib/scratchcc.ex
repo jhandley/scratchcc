@@ -265,6 +265,9 @@ defmodule Scratchcc do
   def gen_script_block(context, x) when is_integer(x) do
     context |> push_code(Integer.to_string(x))
   end
+  def gen_script_block(context, x) when is_float(x) do
+    context |> push_code("#{x}f")
+  end
   def gen_script_block(context, x) when is_binary(x) do
     context |> push_code("\"#{x}\"")
   end
