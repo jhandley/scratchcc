@@ -382,6 +382,14 @@ defmodule Scratchcc do
   defp gpio_value("\"LOW\""), do: "LOW"
   defp gpio_value(x) when is_integer(x) and x > 0, do: "HIGH"
   defp gpio_value(x) when is_integer(x) and x == 0, do: "LOW"
+  # Sometimes Scratch puts integers into strings in JSON.
+  defp gpio_value(str) when is_binary(str) do
+    str
+      |> String.lstrip(?")
+      |> String.rstrip(?")
+      |> String.to_integer
+      |> gpio_value
+  end
 
   defp gen_script_binary_op(context, binary_op, a, b) do
     context = context

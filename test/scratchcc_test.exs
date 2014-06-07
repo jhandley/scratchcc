@@ -2,7 +2,7 @@ defmodule ScratchccTest do
   use ExUnit.Case
 
   test "testing" do
-    x = Scratchcc.gen_from_file("test/pacman.json")
+    x = Scratchcc.gen_from_file("test/pacblink.json")
     IO.inspect x
     File.write("tones.ino", x)
   end
