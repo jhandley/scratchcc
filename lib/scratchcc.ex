@@ -43,10 +43,14 @@ defmodule Scratchcc do
               scope_counter: 0
   end
 
-  def doit(scripts) do
-    %Context{}
-      |> gen_scripts(scripts)
-      |> CodeTemplate.generate
+  def doit(input, output) do
+    contents = gen_from_file(input)
+    File.write(output, contents)
+  end
+
+  def gen_from_file(filename) do
+    {:ok, contents} = File.read(filename)
+    gen_from_json(contents)
   end
 
   def gen_from_json(json) do
