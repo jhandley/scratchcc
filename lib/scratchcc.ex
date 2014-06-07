@@ -327,6 +327,7 @@ defmodule Scratchcc do
   end
   def gen_script_block(context, ["noteOn:duration:elapsed:from:", note, duration]) do
     context
+      |> add_tempo_var
       |> push_code("")
   end
   def gen_script_block(context, ["rest:elapsed:from:", duration]) do
