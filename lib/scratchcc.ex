@@ -19,16 +19,13 @@ void setup()
 <%= for initcall <- Enum.uniq(context.initcode) do %>
     <%= initcall %>
 <% end %>
-
-    for (;;) {
-<%= for poll <- Enum.uniq(context.pollcalls) do %>
-        <%= poll %>
-<% end %>
-    }
 }
 
 void loop()
 {
+<%= for poll <- Enum.uniq(context.pollcalls) do %>
+    <%= poll %>
+<% end %>
 }
 """, [:context]
 end
@@ -169,7 +166,7 @@ defmodule Scratchcc do
     Enum.reduce(context.scope_name, "", &Kernel.<>/2)
   end
 
-  defp prefix(context) do
+  defp var_prefix(context) do
     "#{scope_name(context)}_#{context.scope_counter}"
   end
 
@@ -200,6 +197,12 @@ defmodule Scratchcc do
     """
 
     context |> push_code(code)
+  end
+  def gen_script_thread(context, _blocks) do
+    # Ignore all other unrecognized scratch "hat" blocks. These usually
+    # aren't hat blocks and are just random blocks hanging around while
+    # writing the scratch program
+    context
   end
 
   def gen_script_body(context, blocks) do
@@ -282,7 +285,11 @@ defmodule Scratchcc do
   def gen_script_block(context, ["doForever", loop_contents]) do
     context = context |> gen_script_body(loop_contents)
     {context, loop_code} = pop_code(context)
-    context |> push_code("for (;;) {\n#{loop_code}\n}")
+    if String.length(loop_code) > 0 do
+      context |> push_code("for (;;) {\n#{loop_code}\n}")
+    else
+      context |> push_code("PT_WAIT_UNTIL(pt, 0); /* Empty doForever loop */\n")
+    end
   end
   def gen_script_block(context, ["setVar:to:", varname, value]) do
     context = context |> gen_script_block(value)
@@ -293,11 +300,50 @@ defmodule Scratchcc do
     context = context |> gen_script_block(seconds)
     {context, code} = pop_code(context)
     waitvar = "#{scope_name(context)}_waittime"
-    context = context
+    context
       |> add_global("static unsigned long #{waitvar};")
       |> push_code("#{waitvar} = millis() + 1000 * (#{code});\nPT_WAIT_UNTIL(pt, millis() - #{waitvar} < 10000);\n")
   end
+  def gen_script_block(context, ["setTempoTo:", tempo]) do
+    context = context |> gen_script_block(tempo)
+    {context, code} = pop_code(context)
+    context
+      |> add_tempo_var
+      |> push_code("#{tempo_var(context)} = constrain(#{code}, 20, 500);\n")
+  end
+  def gen_script_block(context, ["changeTempoBy:", delta]) do
+    context = context |> gen_script_block(delta)
+    {context, code} = pop_code(context)
+    context
+      |> add_tempo_var
+      |> push_code("#{tempo_var(context)} = constrain(#{tempo_var(context)} + (#{code}), 20, 500);\n")
+  end
+  def gen_script_block(context, ["tempo"]) do
+    context
+      |> add_tempo_var
+      |> push_code("#{tempo_var(context)}")
+  end
+  def gen_script_block(context, ["instrument:", _instrument]) do
+    # The arduino doesn't support instruments
+    context
+      |> push_code("")
+  end
+  def gen_script_block(context, ["noteOn:duration:elapsed:from:", note, duration]) do
+    context
+      |> push_code("")
+  end
+  def gen_script_block(context, ["rest:elapsed:from:", duration]) do
+    context
+      |> push_code("")
+  end
 
+  defp tempo_var(context) do
+    "#{scope_name(context)}_tempo"
+  end
+
+  def add_tempo_var(context) do
+      add_global(context, "static unsigned long #{tempo_var(context)} = 60; /* Scratch default bpm */")
+  end
 
   defp gen_var_set(context, <<"#out", pin :: binary>>, value_code) do
     context

@@ -1,12 +1,11 @@
 defmodule ScratchccTest do
   use ExUnit.Case
 
-  test "debugging" do
-    {:ok, contents} = File.read("project.json")
+  test "tones" do
+    {:ok, contents} = File.read("test/tones.json")
     x = Scratchcc.gen_from_json(contents)
     IO.inspect x
-    File.write("test.c", x)
-    assert 1 + 1 == 2
+    File.write("tones.ino", x)
   end
 
   test "hello" do
