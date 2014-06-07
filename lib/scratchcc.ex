@@ -299,10 +299,7 @@ defmodule Scratchcc do
   def gen_script_block(context, ["wait:elapsed:from:", seconds]) do
     context = context |> gen_script_block(seconds)
     {context, code} = pop_code(context)
-    waitvar = "#{scope_name(context)}_waittime"
-    context
-      |> add_global("static unsigned long #{waitvar};")
-      |> push_code("#{waitvar} = millis() + 1000 * (#{code});\nPT_WAIT_UNTIL(pt, millis() - #{waitvar} < 10000);\n")
+    gen_wait_millis_code(context, "1000 * (#{code})")
   end
   def gen_script_block(context, ["setTempoTo:", tempo]) do
     context = context |> gen_script_block(tempo)
@@ -334,14 +331,22 @@ defmodule Scratchcc do
   end
   def gen_script_block(context, ["rest:elapsed:from:", duration]) do
     context
-      |> push_code("")
+      |> add_tempo_var
+      |> gen_wait_millis_code("60000 * (#{duration}) / #{tempo_var(context)}")
+  end
+
+  defp gen_wait_millis_code(context, millis_code) do
+    waitvar = "#{scope_name(context)}_waittime"
+    context
+      |> add_global("static unsigned long #{waitvar};")
+      |> push_code("#{waitvar} = millis() + 1000 * (#{millis_code});\nPT_WAIT_UNTIL(pt, millis() - #{waitvar} < 10000);\n")
   end
 
   defp tempo_var(context) do
     "#{scope_name(context)}_tempo"
   end
 
-  def add_tempo_var(context) do
+  defp add_tempo_var(context) do
       add_global(context, "static unsigned long #{tempo_var(context)} = 60; /* Scratch default bpm */")
   end
 
