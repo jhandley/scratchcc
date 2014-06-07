@@ -354,7 +354,7 @@ defmodule Scratchcc do
     waitvar = "#{scope_name(context)}_waittime"
     context
       |> add_global("static unsigned long #{waitvar};")
-      |> push_code("#{waitvar} = millis() + 1000 * (#{millis_code});\nPT_WAIT_UNTIL(pt, millis() - #{waitvar} < 10000);\n")
+      |> push_code("#{waitvar} = millis() + (#{millis_code});\nPT_WAIT_UNTIL(pt, millis() - #{waitvar} < 10000);\n")
   end
 
   defp tempo_var(context) do
