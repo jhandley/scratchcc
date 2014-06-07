@@ -196,6 +196,7 @@ defmodule Scratchcc do
     {
         PT_BEGIN(pt);
         #{body_code}
+        PT_WAIT_UNTIL(pt, 0);/* PT_END will restart, so wait forever */
         PT_END(pt);
     }
     """
