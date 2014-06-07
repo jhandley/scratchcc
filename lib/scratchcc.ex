@@ -326,9 +326,19 @@ defmodule Scratchcc do
       |> push_code("")
   end
   def gen_script_block(context, ["noteOn:duration:elapsed:from:", note, duration]) do
+    context = context
+      |> gen_script_block(note)
+      |> gen_script_block(duration)
+    {context, duration_code} = pop_code(context)
+    {context, note_code} = pop_code(context)
+    freqtable = "scratch_to_freq_table"
     context
       |> add_tempo_var
-      |> push_code("")
+      |> add_global(Notes.c_array(freqtable))
+      |> push_code("tone(6, #{freqtable}[constrain(#{note_code},0,sizeof(#{freqtable})/sizeof(#{freqtable}[0]))]);\n")
+      |> gen_wait_millis_code("60000 * (#{duration_code}) * 9 / (10 * #{tempo_var(context)})")
+      |> push_code("noTone(6);\n")
+      |> gen_wait_millis_code("60000 * (#{duration_code}) / (10 * #{tempo_var(context)})")
   end
   def gen_script_block(context, ["rest:elapsed:from:", duration]) do
     context
