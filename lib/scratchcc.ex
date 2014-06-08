@@ -10,7 +10,7 @@ defmodule CodeTemplate do
 <%= global %>
 <% end %>
 
-<%= for block <- Enum.reverse(context.code) do %>
+<%= for {block,_type} <- Enum.reverse(context.code) do %>
 <%= block %>
 <% end %>
 
@@ -129,7 +129,7 @@ defmodule Scratchcc do
   end
   defp gen_variable(context, <<"#out", pin :: binary>>, _value) do
     context
-      |> add_init_code("pinMode(#{pin}, OUTPUT);")
+      |> add_init_stmt("pinMode(#{pin}, OUTPUT);")
   end
 
   defp push_scope_name(context, name) do
@@ -152,11 +152,17 @@ defmodule Scratchcc do
     %{context | :pollcalls => context.pollcalls ++ [call]}
   end
 
-  defp add_init_code(context, code) do
-    %{context | :initcode => context.initcode ++ [code]}
+  defp add_init_stmt(context, stmt) when is_binary(stmt) do
+    %{context | :initcode => context.initcode ++ [stmt]}
   end
 
-  defp push_code(context, code) do
+  defp push_stmt(context, stmt) when is_binary(stmt) do
+    # A stmt (statement) is just code that doesn't return a type so
+    # it can't be used as an expression. This is a helper.
+    push_code(context, {stmt, nil})
+  end
+
+  defp push_code(context, code) when is_tuple(code) do
     %{context | :code => [code | context.code]}
   end
 
@@ -186,11 +192,11 @@ defmodule Scratchcc do
     context = context
       |> add_include("\"pt.h\"")
       |> add_global("static struct pt #{prefix}_pt;")
-      |> add_init_code("PT_INIT(&#{prefix}_pt);")
+      |> add_init_stmt("PT_INIT(&#{prefix}_pt);")
       |> add_poll_call("#{prefix}_thread(&#{prefix}_pt);")
       |> gen_script_body(body)
 
-    {context, body_code} = pop_code(context)
+    {context, {body_code,_type}} = pop_code(context)
     code = """
     PT_THREAD(#{prefix}_thread(struct pt *pt))
     {
@@ -201,7 +207,7 @@ defmodule Scratchcc do
     }
     """
 
-    context |> push_code(code)
+    context |> push_code({code,nil})
   end
   def gen_script_thread(context, _blocks) do
     # Ignore all other unrecognized scratch "hat" blocks. These usually
@@ -210,11 +216,22 @@ defmodule Scratchcc do
     context
   end
 
+  defp empty_code(), do: {"",nil}
+
+  # Concatenate code blocks together. The return type will be set to
+  # nil since concatenated blocks can no longer be used as expressions.
+  defp concat_code([], accum) do
+    accum
+  end
+  defp concat_code([{code,_type}|rest], {acode,_atype}) do
+    concat_code(rest, {code <> acode, nil})
+  end
+
   def gen_script_body(context, blocks) do
     saved_code = context.code
     context = %{context | code: []}
       |> gen_script_body_impl(blocks)
-    new_code = List.foldl(context.code, "", &Kernel.<>/2)
+    new_code = concat_code(context.code, empty_code)
     %{context | code: [new_code | saved_code]}
   end
 
@@ -246,57 +263,162 @@ defmodule Scratchcc do
     gen_script_binary_op(context, "/", a, b)
   end
   def gen_script_block(context, ["&", a, b]) do
-    gen_script_binary_op(context, "&&", a, b)
+    gen_script_test_op(context, "&&", a, b)
   end
   def gen_script_block(context, ["%", a, b]) do
     gen_script_binary_op(context, "%", a, b)
   end
   def gen_script_block(context, ["<", a, b]) do
-    gen_script_binary_op(context, "<", a, b)
+    gen_script_test_op(context, "<", a, b)
   end
   def gen_script_block(context, ["=", a, b]) do
-    gen_script_binary_op(context, "==", a, b)
+    gen_script_test_op(context, "==", a, b)
   end
   def gen_script_block(context, [">", a, b]) do
-    gen_script_binary_op(context, ">", a, b)
+    gen_script_test_op(context, ">", a, b)
   end
   def gen_script_block(context, ["|", a, b]) do
-    gen_script_binary_op(context, "||", a, b)
+    gen_script_test_op(context, "||", a, b)
   end
   def gen_script_block(context, x) when is_integer(x) do
-    context |> push_code(Integer.to_string(x))
+    context |> push_code({Integer.to_string(x), :integer})
   end
   def gen_script_block(context, x) when is_float(x) do
-    context |> push_code("#{x}f")
+    context |> push_code({"#{x}f", :float})
   end
   def gen_script_block(context, x) when is_binary(x) do
-    context |> push_code("\"#{x}\"")
+    context |> push_code({"\"#{x}\"", :string})
   end
-  def gen_script_block(context, ["sqrt", x]) do
-    context = context |> gen_script_block(x)
-    {context, param_code} = pop_code(context)
-    context |> push_code("sqrt(#{param_code})")
+  def gen_script_block(context, ["computeFunction:of:", "sqrt", x]) do
+    context = context |> gen_script_block(x) |> top_code_to_type(:number)
+    {context, {param_code, _type}} = pop_code(context)
+    context
+      |> add_include("<math.h>")
+      |> push_code({"sqrtf(#{param_code})", :float})
   end
-  def gen_script_block(context, ["abs", x]) do
-    context = context |> gen_script_block(x)
-    {context, param_code} = pop_code(context)
-    context |> push_code("abs(#{param_code})")
+  def gen_script_block(context, ["computeFunction:of:", "abs", x]) do
+    context = context |> gen_script_block(x) |> top_code_to_type(:number)
+    {context, {param_code, _type}} = pop_code(context)
+    context
+      |> add_include("<math.h>")
+      |> push_code({"fabs(#{param_code})", :float})
+  end
+  def gen_script_block(context, ["computeFunction:of:", "floor", x]) do
+    context = context |> gen_script_block(x) |> top_code_to_type(:number)
+    {context, {param_code, _type}} = pop_code(context)
+    context
+      |> add_include("<math.h>")
+      |> push_code({"floorf(#{param_code})", :float})
+  end
+  def gen_script_block(context, ["computeFunction:of:", "ceiling", x]) do
+    context = context |> gen_script_block(x) |> top_code_to_type(:number)
+    {context, {param_code, _type}} = pop_code(context)
+    context
+      |> add_include("<math.h>")
+      |> push_code({"ceilf(#{param_code})", :float})
+  end
+  def gen_script_block(context, ["computeFunction:of:", "sin", x]) do
+    context = context |> gen_script_block(x) |> top_code_to_type(:number)
+    {context, {param_code, _type}} = pop_code(context)
+    context
+      |> add_include("<math.h>")
+      |> push_code({"sinf(M_PI / 180.0f * #{param_code})", :float})
+  end
+  def gen_script_block(context, ["computeFunction:of:", "cos", x]) do
+    context = context |> gen_script_block(x) |> top_code_to_type(:number)
+    {context, {param_code, _type}} = pop_code(context)
+    context
+      |> add_include("<math.h>")
+      |> push_code({"cosf(M_PI / 180.0f * #{param_code})", :float})
+  end
+  def gen_script_block(context, ["computeFunction:of:", "tan", x]) do
+    context = context |> gen_script_block(x) |> top_code_to_type(:number)
+    {context, {param_code, _type}} = pop_code(context)
+    context
+      |> add_include("<math.h>")
+      |> push_code({"tanf(M_PI / 180.0f * #{param_code})", :float})
+  end
+  def gen_script_block(context, ["computeFunction:of:", "asin", x]) do
+    context = context |> gen_script_block(x) |> top_code_to_type(:number)
+    {context, {param_code, _type}} = pop_code(context)
+    context
+      |> add_include("<math.h>")
+      |> push_code({"180.0f / M_PI * asinf(#{param_code})", :float})
+  end
+  def gen_script_block(context, ["computeFunction:of:", "acos", x]) do
+    context = context |> gen_script_block(x) |> top_code_to_type(:number)
+    {context, {param_code, _type}} = pop_code(context)
+    context
+      |> add_include("<math.h>")
+      |> push_code({"180.0f / M_PI * acosf(#{param_code})", :float})
+  end
+  def gen_script_block(context, ["computeFunction:of:", "atan", x]) do
+    context = context |> gen_script_block(x) |> top_code_to_type(:number)
+    {context, {param_code, _type}} = pop_code(context)
+    context
+      |> add_include("<math.h>")
+      |> push_code({"180.0f / M_PI * atanf(#{param_code})", :float})
+  end
+  def gen_script_block(context, ["computeFunction:of:", "ln", x]) do
+    context = context |> gen_script_block(x) |> top_code_to_type(:number)
+    {context, {param_code, _type}} = pop_code(context)
+    context
+      |> add_include("<math.h>")
+      |> push_code({"logf(#{param_code})", :float})
+  end
+  def gen_script_block(context, ["computeFunction:of:", "e ^", x]) do
+    context = context |> gen_script_block(x) |> top_code_to_type(:number)
+    {context, {param_code, _type}} = pop_code(context)
+    context
+      |> add_include("<math.h>")
+      |> push_code({"powf(2.718281828f, #{param_code})", :float})
+  end
+  def gen_script_block(context, ["computeFunction:of:", "10 ^", x]) do
+    context = context |> gen_script_block(x) |> top_code_to_type(:number)
+    {context, {param_code, _type}} = pop_code(context)
+    context
+      |> add_include("<math.h>")
+      |> push_code({"powf(10.f, #{param_code})", :float})
+  end
+  def gen_script_block(context, ["computeFunction:of:", "log", x]) do
+    context = context |> gen_script_block(x) |> top_code_to_type(:number)
+    {context, {param_code, _type}} = pop_code(context)
+    context
+      |> add_include("<math.h>")
+      |> push_code({"log10f(#{param_code})", :float})
+  end
+  def gen_script_block(context, ["randomFrom:to:", a, b]) do
+    context = context
+      |> gen_script_block(a)
+      |> top_code_to_type(:integer)
+      |> gen_script_block(b)
+      |> top_code_to_type(:integer)
+    {context, {b_code, _type}} = pop_code(context)
+    {context, {a_code, _type}} = pop_code(context)
+    context
+      |> push_code({"random(#{a_code}, #{b_code})", :integer})
+  end
+  def gen_script_block(context, ["rounded", x]) do
+    context = context |> gen_script_block(x) |> top_code_to_type(:number)
+    {context, {param_code, type}} = pop_code(context)
+    context
+      |> add_include("<math.h>")
+      |> push_code({"roundf(#{param_code})", :float})
   end
   def gen_script_block(context, ["say:", x]) do
-    context = context |> gen_script_block(x)
-    # TODO: if x is a int, then turn it into a string for this call
-    {context, param_code} = pop_code(context)
+    context = context |> gen_script_block(x) |> top_code_to_type(:string)
+    {context, {param_code, :string}} = pop_code(context)
     context
-      |> add_init_code("Serial.begin(9600);")
-      |> push_code("Serial.write(#{param_code});")
+      |> add_init_stmt("Serial.begin(9600);")
+      |> push_stmt("Serial.println(#{param_code});\n")
   end
   def gen_script_block(context, ["doForever", loop_contents]) do
     context = context |> gen_script_body(loop_contents)
-    {context, loop_code} = pop_code(context)
+    {context, {loop_code, _type}} = pop_code(context)
     if String.length(loop_code) > 0 do
-      context |> push_code("for (;;) {\n#{loop_code}\n}")
+      context |> push_stmt("for (;;) {\n#{loop_code}\n}\n")
     else
-      context |> push_code("PT_WAIT_UNTIL(pt, 0); /* Empty doForever loop */\n")
+      context |> push_stmt("PT_WAIT_UNTIL(pt, 0); /* Empty doForever loop */\n")
     end
   end
   def gen_script_block(context, ["setVar:to:", varname, value]) do
@@ -305,47 +427,49 @@ defmodule Scratchcc do
     context |> gen_var_set(varname, value_code)
   end
   def gen_script_block(context, ["wait:elapsed:from:", seconds]) do
-    context = context |> gen_script_block(seconds)
-    {context, code} = pop_code(context)
+    context = context |> gen_script_block(seconds) |> top_code_to_type(:number)
+    {context, {code, _type}} = pop_code(context)
     gen_wait_millis_code(context, "1000 * (#{code})")
   end
   def gen_script_block(context, ["setTempoTo:", tempo]) do
-    context = context |> gen_script_block(tempo)
-    {context, code} = pop_code(context)
+    context = context |> gen_script_block(tempo) |> top_code_to_type(:integer)
+    {context, {code, _type}} = pop_code(context)
     context
       |> add_tempo_var
-      |> push_code("#{tempo_var(context)} = constrain(#{code}, 20, 500);\n")
+      |> push_stmt("#{tempo_var(context)} = constrain(#{code}, 20, 500);\n")
   end
   def gen_script_block(context, ["changeTempoBy:", delta]) do
-    context = context |> gen_script_block(delta)
-    {context, code} = pop_code(context)
+    context = context |> gen_script_block(delta) |> top_code_to_type(:integer)
+    {context, {code, _type}} = pop_code(context)
     context
       |> add_tempo_var
-      |> push_code("#{tempo_var(context)} = constrain(#{tempo_var(context)} + (#{code}), 20, 500);\n")
+      |> push_stmt("#{tempo_var(context)} = constrain(#{tempo_var(context)} + (#{code}), 20, 500);\n")
   end
   def gen_script_block(context, ["tempo"]) do
     context
       |> add_tempo_var
-      |> push_code("#{tempo_var(context)}")
+      |> push_code({"#{tempo_var(context)}", :integer})
   end
   def gen_script_block(context, ["instrument:", _instrument]) do
     # The arduino doesn't support instruments
     context
-      |> push_code("")
+      |> push_stmt("")
   end
   def gen_script_block(context, ["noteOn:duration:elapsed:from:", note, duration]) do
     context = context
       |> gen_script_block(note)
+      |> top_code_to_type(:integer)
       |> gen_script_block(duration)
-    {context, duration_code} = pop_code(context)
-    {context, note_code} = pop_code(context)
+      |> top_code_to_type(:number)
+    {context, {duration_code, _type}} = pop_code(context)
+    {context, {note_code, :integer}} = pop_code(context)
     freqtable = "scratch_to_freq_table"
     context
       |> add_tempo_var
       |> add_global(Notes.c_array(freqtable))
-      |> push_code("tone(6, #{freqtable}[constrain(#{note_code},0,sizeof(#{freqtable})/sizeof(#{freqtable}[0]))]);\n")
+      |> push_stmt("tone(6, #{freqtable}[constrain(#{note_code},0,sizeof(#{freqtable})/sizeof(#{freqtable}[0]))]);\n")
       |> gen_wait_millis_code("60000 * (#{duration_code}) * 9 / (10 * #{tempo_var(context)})")
-      |> push_code("noTone(6);\n")
+      |> push_stmt("noTone(6);\n")
       |> gen_wait_millis_code("60000 * (#{duration_code}) / (10 * #{tempo_var(context)})")
   end
   def gen_script_block(context, ["rest:elapsed:from:", duration]) do
@@ -353,12 +477,27 @@ defmodule Scratchcc do
       |> add_tempo_var
       |> gen_wait_millis_code("60000 * (#{duration}) / #{tempo_var(context)}")
   end
+  def gen_script_block(context, ["concatenate:with:", str1, str2]) do
+    context = context
+      |> gen_script_block(str1)
+      |> top_code_to_type(:string)
+      |> gen_script_block(str2)
+      |> top_code_to_type(:string)
+    {context, {str2_code, :string}} = pop_code(context)
+    {context, {str1_code, :string}} = pop_code(context)
+    # TODO: This doesn't generate good code. It may be nice to know whether
+    #       we have a constant string or a dynamic one, since contant string
+    #       concatenation is free and if we have a dynamic string, we don't
+    #       need to run the copy constructor.
+    context
+      |> push_code({"(String(#{str1_code}) + String(#{str2_code}))", :string})
+  end
 
   defp gen_wait_millis_code(context, millis_code) do
     waitvar = "#{scope_name(context)}_waittime"
     context
       |> add_global("static unsigned long #{waitvar};")
-      |> push_code("#{waitvar} = millis() + (#{millis_code});\nPT_WAIT_UNTIL(pt, millis() - #{waitvar} < 10000);\n")
+      |> push_stmt("#{waitvar} = millis() + (#{millis_code});\nPT_WAIT_UNTIL(pt, millis() - #{waitvar} < 10000);\n")
   end
 
   defp tempo_var(context) do
@@ -369,35 +508,92 @@ defmodule Scratchcc do
       add_global(context, "static unsigned long #{tempo_var(context)} = 60; /* Scratch default bpm */")
   end
 
-  defp gen_var_set(context, <<"#out", pin :: binary>>, value_code) do
+  defp gen_var_set(context, <<"#out", pin :: binary>>, value_code) when is_tuple(value_code) do
     context
-      |> push_code("digitalWrite(#{pin}, #{gpio_value(value_code)});\n")
+      |> push_stmt("digitalWrite(#{pin}, #{gpio_value(value_code)});\n")
   end
 
-  defp gpio_value("\"high\""), do: "HIGH"
-  defp gpio_value("\"High\""), do: "HIGH"
-  defp gpio_value("\"HIGH\""), do: "HIGH"
-  defp gpio_value("\"low\""), do: "LOW"
-  defp gpio_value("\"Low\""), do: "LOW"
-  defp gpio_value("\"LOW\""), do: "LOW"
-  defp gpio_value(x) when is_integer(x) and x > 0, do: "HIGH"
-  defp gpio_value(x) when is_integer(x) and x == 0, do: "LOW"
-  # Sometimes Scratch puts integers into strings in JSON.
-  defp gpio_value(str) when is_binary(str) do
-    str
-      |> String.lstrip(?")
-      |> String.rstrip(?")
-      |> String.to_integer
-      |> gpio_value
+  defp top_code_to_type(context, desired_type) do
+    # Convert the code on the top of the code stack to the desired type
+    {context, code_tuple} = pop_code(context)
+    push_code_as_type(context, code_tuple, desired_type)
   end
+  defp push_code_as_type(context, {code, type}, type) do
+    # Easy case - type already matches
+    push_code(context, {code, type})
+  end
+  defp push_code_as_type(context, {code, :integer}, :string) do
+    push_code(context, {"String(#{code},10)", :string})
+  end
+  defp push_code_as_type(context, {code, type}, :string) when type == :float or type == :number do
+    # Arduino doesn't have float to string????
+    push_code(context, {"String((long int) (#{code}), 10)", :string})
+  end
+  defp push_code_as_type(context, {code, type}, :number) when type == :integer or type == :float do
+    push_code(context, {code, type})
+  end
+
+  # Normalize GPIO values
+  defp gpio_value({"\"high\"", :string}), do: 1
+  defp gpio_value({"\"High\"", :string}), do: 1
+  defp gpio_value({"\"HIGH\"", :string}), do: 1
+  defp gpio_value({"\"low\"", :string}), do: 0
+  defp gpio_value({"\"Low\"", :string}), do: 0
+  defp gpio_value({"\"LOW\"", :string}), do: 0
+  defp gpio_value({x, type}) when (type == :number or type == :integer or type == :float) and x != 0, do: 1
+  defp gpio_value({x, type}) when (type == :number or type == :integer or type == :float) and x == 0, do: 0
+  defp gpio_value({str, :string}) do
+    # Sometimes Scratch puts integers into JSON strings or maybe
+    # it's the people writing the code...
+    x = str
+      |> String.lstrip(?") # strip left quote
+      |> String.rstrip(?") # strip right quote
+      |> String.strip      # strip any remaining whitespace
+      |> String.to_integer
+    gpio_value({x, :integer})
+  end
+
+  # This figures out the resulting type after running a binary op.
+  # For example a float + an integer = a float, etc.
+  defp binary_op_result_type(:number, :number), do: :number
+  defp binary_op_result_type(:float, _b_type), do: :float
+  defp binary_op_result_type(_a_type, :float), do: :float
+  defp binary_op_result_type(:integer, :integer), do: :integer
 
   defp gen_script_binary_op(context, binary_op, a, b) do
     context = context
       |> gen_script_block(a)
+      |> top_code_to_type(:number)
       |> gen_script_block(b)
-    {context, b_code} = pop_code(context)
-    {context, a_code} = pop_code(context)
-    context |> push_code("((#{a_code}) " <> binary_op <> "(#{b_code}))")
+      |> top_code_to_type(:number)
+    {context, {b_code, b_type}} = pop_code(context)
+    {context, {a_code, a_type}} = pop_code(context)
+    result_type = binary_op_result_type(a_type, b_type)
+    context |> push_code({"((#{a_code}) #{binary_op} (#{b_code}))", result_type})
   end
 
+  defp test_op_common_type(_a_type, :string), do: :string
+  defp test_op_common_type(:string, _b_type), do: :string
+  defp test_op_common_type(_a_type, :float), do: :float
+  defp test_op_common_type(:float, _b_type), do: :float
+  defp test_op_common_type(_a_type, :number), do: :float
+  defp test_op_common_type(:number, _b_type), do: :float
+  defp test_op_common_type(:integer, :integer), do: :integer
+
+  defp gen_script_test_op(context, test_op, a, b) do
+    context = context
+      |> gen_script_block(a)
+      |> gen_script_block(b)
+    {context, {b_code, b_type}} = pop_code(context)
+    {context, {a_code, a_type}} = pop_code(context)
+
+    # The types being compared need to be compatible types, so make that happen.
+    compare_type = test_op_common_type(a_type, b_type)
+    {context, {common_a_code, _}} = context |> push_code_as_type({a_code, a_type}, compare_type) |> pop_code
+    {context, {common_b_code, _}} = context |> push_code_as_type({b_code, b_type}, compare_type) |> pop_code
+
+    # TODO: Add boolean type??
+    context |>
+      push_code({"((#{common_a_code}) #{test_op} (#{common_b_code}))", :integer})
+  end
 end
