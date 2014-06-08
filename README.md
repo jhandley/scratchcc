@@ -4,6 +4,9 @@ Scratch to microcontroller crosscompiler
 
 # Block implementation status
 
+See [Block Selectors](http://wiki.scratch.mit.edu/wiki/Scratch_File_Format_(2.0)/Block_Selectors)
+for the official documentation.
+
 Selector	|	Block	|	Supported?	|	Notes
 ----------------|---------------|-----------------------|-------------------
 -	        |	() - ()	|	y	|	
