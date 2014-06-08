@@ -2,7 +2,18 @@
 
 Scratch to microcontroller crosscompiler
 
-# Block implementation status
+## GPIO access
+
+GPIO access is currently done via a naming convention on Scratch variables.
+
+Name            | Description                   | Supported values
+----------------|-------------------------------|---------------------
+`#outX`         | Digital out on pin `X`        | `HIGH`, `LOW`, 0, 1
+`#inX`          | Digital in on pin `X          | `HIGH`, `LOW``
+`#pwmX`         | Digital PWM output on pin `X` | 0 - 100 (Duty cycle)
+`#ainX`         | Analog in on pin `X`          | 0 - 1023
+
+## Block implementation status
 
 See [Block Selectors](http://wiki.scratch.mit.edu/wiki/Scratch_File_Format_(2.0)/Block_Selectors)
 for the official documentation.
