@@ -280,6 +280,11 @@ defmodule Scratchcc do
   def gen_script_block(context, ["|", a, b]) do
     gen_script_test_op(context, "||", a, b)
   end
+  def gen_script_block(context, ["not", x]) do
+    context = context |> gen_script_block(x) |> top_code_to_type(:number)
+    {context, {param_code, _type}} = pop_code(context)
+    context |> push_code({"!(#{param_code})", :integer})
+  end
   def gen_script_block(context, x) when is_integer(x) do
     context |> push_code({Integer.to_string(x), :integer})
   end
@@ -400,7 +405,7 @@ defmodule Scratchcc do
   end
   def gen_script_block(context, ["rounded", x]) do
     context = context |> gen_script_block(x) |> top_code_to_type(:number)
-    {context, {param_code, type}} = pop_code(context)
+    {context, {param_code, _type}} = pop_code(context)
     context
       |> add_include("<math.h>")
       |> push_code({"roundf(#{param_code})", :float})
