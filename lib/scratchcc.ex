@@ -40,7 +40,8 @@ defmodule Scratchcc do
               initcode: [],
               code: [],
               scope_name: [],
-              scope_counter: 0
+              scope_counter: 0,
+              repeat_counter_var: 0
   end
 
   def doit(input, output) do
@@ -426,6 +427,31 @@ defmodule Scratchcc do
       context |> push_stmt("PT_WAIT_UNTIL(pt, 0); /* Empty doForever loop */\n")
     end
   end
+  
+  defp inc_repeat_counter_var(context) do
+    %{context | :repeat_counter_var => context.repeat_counter_var + 1}
+  end
+
+  defp add_repeat_loop_var(context) do
+    repeat_loop_var = "repeat_loop_var_#{context.repeat_counter_var}"
+    context 
+     |> inc_repeat_counter_var 
+     |> add_global("static unsigned long #{repeat_loop_var};")
+     |> (&{&1, repeat_loop_var}).()
+  end
+
+  def gen_script_block(context, ["doRepeat", num_repetitions, loop_contents]) do
+    context = context |> gen_script_body(loop_contents)
+    {context, {loop_code, _type}} = pop_code(context)
+    if String.length(loop_code) > 0 do
+      {context, repeat_loop_var} = add_repeat_loop_var(context)
+      context
+      |> push_stmt("for (#{repeat_loop_var}=0;#{repeat_loop_var} < #{num_repetitions}; ++#{repeat_loop_var}) {\n#{loop_code}\n}\n")
+    else
+      context |> push_stmt("PT_WAIT_UNTIL(pt, 0); /* Empty doRepeat loop */\n")
+    end
+  end
+
   def gen_script_block(context, ["setVar:to:", varname, value]) do
     context = context |> gen_script_block(value)
     {context, value_code} = pop_code(context)
