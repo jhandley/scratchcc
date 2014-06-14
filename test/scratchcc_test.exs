@@ -25,5 +25,8 @@ defmodule ScratchccTest do
   test "pacblink" do
     Scratchcc.gen_from_file("test/pacblink.json")
   end
+  test "doRepeat" do
+    Scratchcc.gen_from_file("test/doRepeat.json")
+  end
 
 end
