@@ -1315,7 +1315,7 @@ AcDbSymbolTableRecord
 100
 AcDbBlockTableRecord
   2
-USB_B_Panel_Mount
+Right_Wheel
 340
 0
   0
@@ -1327,7 +1327,7 @@ AcDbSymbolTableRecord
 100
 AcDbBlockTableRecord
   2
-Right_Wheel
+USB_B_Panel_Mount
 340
 0
   0
@@ -2035,312 +2035,6 @@ AcDbEntity
 100
 AcDbBlockBegin
   2
-USB_B_Panel_Mount
- 70
-0
- 10
-0.0
- 20
-0.0
- 30
-0.0
-  3
-USB_B_Panel_Mount
-  1
-
-  0
-CIRCLE
-  5
-64
-100
-AcDbEntity
-100
-AcDbCircle
-  8
-USB_Connector
- 62
-256
-370
--1
-  6
-BYLAYER
- 10
--13.5
- 20
-0.0
- 30
-0.0
- 40
-1.7
-  0
-CIRCLE
-  5
-65
-100
-AcDbEntity
-100
-AcDbCircle
-  8
-USB_Connector
- 62
-256
-370
--1
-  6
-BYLAYER
- 10
-13.5
- 20
-0.0
- 30
-0.0
- 40
-1.7
-  0
-LINE
-  5
-66
-100
-AcDbEntity
-100
-AcDbLine
-  8
-Dimensions
- 62
-256
-370
--1
-  6
-BYLAYER
- 10
--17.25
- 20
--8.25
- 30
-0.0
- 11
-17.25
- 21
--8.25
- 31
-0.0
-  0
-LINE
-  5
-67
-100
-AcDbEntity
-100
-AcDbLine
-  8
-Dimensions
- 62
-256
-370
--1
-  6
-BYLAYER
- 10
-17.25
- 20
--8.25
- 30
-0.0
- 11
-17.25
- 21
-8.25
- 31
-0.0
-  0
-LINE
-  5
-68
-100
-AcDbEntity
-100
-AcDbLine
-  8
-Dimensions
- 62
-256
-370
--1
-  6
-BYLAYER
- 10
-17.25
- 20
-8.25
- 30
-0.0
- 11
--17.25
- 21
-8.25
- 31
-0.0
-  0
-LINE
-  5
-69
-100
-AcDbEntity
-100
-AcDbLine
-  8
-Dimensions
- 62
-256
-370
--1
-  6
-BYLAYER
- 10
--17.25
- 20
-8.25
- 30
-0.0
- 11
--17.25
- 21
--8.25
- 31
-0.0
-  0
-LINE
-  5
-6A
-100
-AcDbEntity
-100
-AcDbLine
-  8
-Dimensions
- 62
-256
-370
--1
-  6
-BYLAYER
- 10
--6.0
- 20
--5.25
- 30
-0.0
- 11
-6.0
- 21
--5.25
- 31
-0.0
-  0
-LINE
-  5
-6B
-100
-AcDbEntity
-100
-AcDbLine
-  8
-Dimensions
- 62
-256
-370
--1
-  6
-BYLAYER
- 10
-6.0
- 20
--5.25
- 30
-0.0
- 11
-6.0
- 21
-5.25
- 31
-0.0
-  0
-LINE
-  5
-6C
-100
-AcDbEntity
-100
-AcDbLine
-  8
-Dimensions
- 62
-256
-370
--1
-  6
-BYLAYER
- 10
-6.0
- 20
-5.25
- 30
-0.0
- 11
--6.0
- 21
-5.25
- 31
-0.0
-  0
-LINE
-  5
-6D
-100
-AcDbEntity
-100
-AcDbLine
-  8
-Dimensions
- 62
-256
-370
--1
-  6
-BYLAYER
- 10
--6.0
- 20
-5.25
- 30
-0.0
- 11
--6.0
- 21
--5.25
- 31
-0.0
-  0
-ENDBLK
-  5
-6E
-100
-AcDbEntity
-  8
-0
-100
-AcDbBlockEnd
-  0
-BLOCK
-  5
-6F
-100
-AcDbEntity
-  8
-0
-100
-AcDbBlockBegin
-  2
 Right_Wheel
  70
 0
@@ -2357,7 +2051,7 @@ Right_Wheel
   0
 DIMENSION
   5
-70
+64
 100
 AcDbEntity
   8
@@ -2421,7 +2115,7 @@ DSTYLE
   0
 DIMENSION
   5
-71
+65
 100
 AcDbEntity
   8
@@ -2493,7 +2187,7 @@ DSTYLE
   0
 DIMENSION
   5
-72
+66
 100
 AcDbEntity
   8
@@ -2565,7 +2259,7 @@ DSTYLE
   0
 LINE
   5
-73
+67
 100
 AcDbEntity
 100
@@ -2588,6 +2282,312 @@ BYLAYER
 -31.058400000000006
  21
 39.6761920000000003
+ 31
+0.0
+  0
+LINE
+  5
+68
+100
+AcDbEntity
+100
+AcDbLine
+  8
+Dimensions
+ 62
+256
+370
+-1
+  6
+BYLAYER
+ 10
+-31.058400000000006
+ 20
+33.8761920000000032
+ 30
+0.0
+ 11
+-3.558400000000006
+ 21
+33.8761920000000032
+ 31
+0.0
+  0
+LINE
+  5
+69
+100
+AcDbEntity
+100
+AcDbLine
+  8
+Dimensions
+ 62
+256
+370
+-1
+  6
+BYLAYER
+ 10
+-3.558400000000006
+ 20
+33.8761920000000032
+ 30
+0.0
+ 11
+-3.558400000000006
+ 21
+18.8761920000000032
+ 31
+0.0
+  0
+LINE
+  5
+6A
+100
+AcDbEntity
+100
+AcDbLine
+  8
+Dimensions
+ 62
+256
+370
+-1
+  6
+BYLAYER
+ 10
+-31.058400000000006
+ 20
+39.6761920000000003
+ 30
+0.0
+ 11
+-31.058400000000006
+ 21
+33.8761920000000032
+ 31
+0.0
+  0
+LINE
+  5
+6B
+100
+AcDbEntity
+100
+AcDbLine
+  8
+Dimensions
+ 62
+256
+370
+-1
+  6
+BYLAYER
+ 10
+-31.058400000000006
+ 20
+13.0761920000000025
+ 30
+0.0
+ 11
+-39.558400000000006
+ 21
+13.0761920000000025
+ 31
+0.0
+  0
+LINE
+  5
+6C
+100
+AcDbEntity
+100
+AcDbLine
+  8
+Dimensions
+ 62
+256
+370
+-1
+  6
+BYLAYER
+ 10
+-3.558400000000006
+ 20
+18.8761920000000032
+ 30
+0.0
+ 11
+-31.058400000000006
+ 21
+18.8761920000000032
+ 31
+0.0
+  0
+LINE
+  5
+6D
+100
+AcDbEntity
+100
+AcDbLine
+  8
+Dimensions
+ 62
+256
+370
+-1
+  6
+BYLAYER
+ 10
+-31.058400000000006
+ 20
+18.8761920000000032
+ 30
+0.0
+ 11
+-31.058400000000006
+ 21
+13.0761920000000025
+ 31
+0.0
+  0
+ENDBLK
+  5
+6E
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockEnd
+  0
+BLOCK
+  5
+6F
+100
+AcDbEntity
+  8
+0
+100
+AcDbBlockBegin
+  2
+USB_B_Panel_Mount
+ 70
+0
+ 10
+0.0
+ 20
+0.0
+ 30
+0.0
+  3
+USB_B_Panel_Mount
+  1
+
+  0
+CIRCLE
+  5
+70
+100
+AcDbEntity
+100
+AcDbCircle
+  8
+USB_Connector
+ 62
+256
+370
+-1
+  6
+BYLAYER
+ 10
+-13.5
+ 20
+0.0
+ 30
+0.0
+ 40
+1.7
+  0
+CIRCLE
+  5
+71
+100
+AcDbEntity
+100
+AcDbCircle
+  8
+USB_Connector
+ 62
+256
+370
+-1
+  6
+BYLAYER
+ 10
+13.5
+ 20
+0.0
+ 30
+0.0
+ 40
+1.7
+  0
+LINE
+  5
+72
+100
+AcDbEntity
+100
+AcDbLine
+  8
+Dimensions
+ 62
+256
+370
+-1
+  6
+BYLAYER
+ 10
+-17.25
+ 20
+-8.25
+ 30
+0.0
+ 11
+17.25
+ 21
+-8.25
+ 31
+0.0
+  0
+LINE
+  5
+73
+100
+AcDbEntity
+100
+AcDbLine
+  8
+Dimensions
+ 62
+256
+370
+-1
+  6
+BYLAYER
+ 10
+17.25
+ 20
+-8.25
+ 30
+0.0
+ 11
+17.25
+ 21
+8.25
  31
 0.0
   0
@@ -2607,15 +2607,15 @@ Dimensions
   6
 BYLAYER
  10
--31.058400000000006
+17.25
  20
-33.8761920000000032
+8.25
  30
 0.0
  11
--3.558400000000006
+-17.25
  21
-33.8761920000000032
+8.25
  31
 0.0
   0
@@ -2635,15 +2635,15 @@ Dimensions
   6
 BYLAYER
  10
--3.558400000000006
+-17.25
  20
-33.8761920000000032
+8.25
  30
 0.0
  11
--3.558400000000006
+-17.25
  21
-18.8761920000000032
+-8.25
  31
 0.0
   0
@@ -2655,7 +2655,7 @@ AcDbEntity
 100
 AcDbLine
   8
-Dimensions
+USB_Connector
  62
 256
 370
@@ -2663,15 +2663,15 @@ Dimensions
   6
 BYLAYER
  10
--31.058400000000006
+-6.0
  20
-39.6761920000000003
+-5.25
  30
 0.0
  11
--31.058400000000006
+6.0
  21
-33.8761920000000032
+-5.25
  31
 0.0
   0
@@ -2683,7 +2683,7 @@ AcDbEntity
 100
 AcDbLine
   8
-Dimensions
+USB_Connector
  62
 256
 370
@@ -2691,15 +2691,15 @@ Dimensions
   6
 BYLAYER
  10
--31.058400000000006
+6.0
  20
-13.0761920000000025
+-5.25
  30
 0.0
  11
--39.558400000000006
+6.0
  21
-13.0761920000000025
+5.25
  31
 0.0
   0
@@ -2711,7 +2711,7 @@ AcDbEntity
 100
 AcDbLine
   8
-Dimensions
+USB_Connector
  62
 256
 370
@@ -2719,15 +2719,15 @@ Dimensions
   6
 BYLAYER
  10
--3.558400000000006
+6.0
  20
-18.8761920000000032
+5.25
  30
 0.0
  11
--31.058400000000006
+-6.0
  21
-18.8761920000000032
+5.25
  31
 0.0
   0
@@ -2739,7 +2739,7 @@ AcDbEntity
 100
 AcDbLine
   8
-Dimensions
+USB_Connector
  62
 256
 370
@@ -2747,15 +2747,15 @@ Dimensions
   6
 BYLAYER
  10
--31.058400000000006
+-6.0
  20
-18.8761920000000032
+5.25
  30
 0.0
  11
--31.058400000000006
+-6.0
  21
-13.0761920000000025
+-5.25
  31
 0.0
   0
