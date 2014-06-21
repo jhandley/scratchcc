@@ -28,5 +28,8 @@ defmodule ScratchccTest do
   test "doRepeat" do
     Scratchcc.gen_from_file("test/doRepeat.json")
   end
+  test "procDefCall" do
+    Scratchcc.gen_from_file("test/procDefCall.json")
+  end
 
 end

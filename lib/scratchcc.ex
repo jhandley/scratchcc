@@ -34,12 +34,16 @@ end
 defmodule Scratchcc do
 
   defmodule Context do
+
     defstruct includes: [],
               globals: [],
+              locals: [],
               pollcalls: [],
               initcode: [],
               code: [],
               scope_name: [],
+              proc_name: nil,
+              proc_args: %{},
               scope_counter: 0,
               repeat_counter_var: 0
   end
@@ -82,6 +86,7 @@ defmodule Scratchcc do
     context
       |> push_scope_name(obj["objName"])
       |> gen_variables(obj["variables"])
+      |> get_proc_def_scripts(obj["scripts"])
       |> gen_scripts(obj["scripts"])
       |> pop_scope_name
   end
@@ -108,9 +113,44 @@ defmodule Scratchcc do
   def gen_script(context, [x, y, cmds]) do
     # TODO: figure out something on the scope_name
     context
-      |> push_scope_name("_#{x}_#{y}")
+      |> push_scope_name(String.replace("_#{x}_#{y}", ".", "_"))
       |> gen_script_thread(cmds)
       |> pop_scope_name
+  end
+
+  @doc """
+  Parse procDefs (custom block definitions) for a script.
+  This is done first before code generation since calls to the proc can come
+  before the definition in the source file.
+  """
+  def get_proc_def_script(context, [_, _, [["procDef", proc_name, input_names, default_values, _] | _]]) do
+
+    context =
+      context
+      |> add_proc_def(proc_name, input_names, default_values)
+    decl = get_proc_declaration(context, proc_name)
+    context
+      |> add_global("#{decl};")
+  end
+  def get_proc_def_script(context, _) do
+    # not a proc
+    context
+  end
+
+    @doc """
+  Generate code for the procdefs in the "scripts" value for the both sprites and
+  the stage.
+  """
+  def get_proc_def_scripts(context, nil) do
+    context
+  end
+  def get_proc_def_scripts(context, []) do
+    context
+  end
+  def get_proc_def_scripts(context, [script | scripts]) do
+    context
+      |> get_proc_def_script(script)
+      |> get_proc_def_scripts(scripts)
   end
 
   defp gen_variables(context, nil) do
@@ -149,6 +189,14 @@ defmodule Scratchcc do
     %{context | :globals => context.globals ++ [declaration]}
   end
 
+  defp add_local(context, declaration) do
+    %{context | :locals => context.locals ++ [declaration]}
+  end
+
+  defp clear_locals(context) do
+    %{context | :locals => []}
+  end
+
   defp add_poll_call(context, call) do
     %{context | :pollcalls => context.pollcalls ++ [call]}
   end
@@ -185,6 +233,67 @@ defmodule Scratchcc do
     %{context | :scope_counter => context.scope_counter + 1}
   end
 
+  defp scoped_proc_name(context, proc_name) do
+    "#{List.last(context.scope_name)}_proc_#{to_c_identifier(proc_name)}"
+  end
+
+  defp proc_param_to_type("%n") do
+    :number
+  end
+  defp proc_param_to_type("%b") do
+    :boolean
+  end
+  defp proc_param_to_type("%s") do
+    :string
+  end
+  defp proc_param_to_type(_) do
+    nil
+  end
+
+  defp to_c_type(:integer) do
+    "int"
+  end
+  defp to_c_type(:float) do
+    "float"
+  end
+  defp to_c_type(:number) do
+    "float"
+  end
+  defp to_c_type(:boolean) do
+    "int"
+  end
+  defp to_c_type(:string) do
+    "String"
+  end
+
+  defp to_c_identifier(id) do
+     Regex.replace(~r/[^\w]/, id, "_") # make this smarter, avoid name conflicts
+  end
+
+  defp start_proc(context, name) do
+    %{context | :proc_name => name}
+  end
+
+  defp end_proc(context) do
+    %{context | :proc_name => nil}
+  end
+
+  defp add_proc_def(context, proc_name, input_names, default_values) do
+    types = for word <- String.split(proc_name), type = proc_param_to_type(word), type != nil do type end
+    %{context | :proc_args => Map.put(context.proc_args, proc_name, List.zip([input_names, types, default_values]))}
+  end
+
+  defp get_proc_declaration(context, proc_name) do
+    proc_arg_info = context.proc_args[proc_name]
+    arglist = Enum.reduce(proc_arg_info, "", fn(x, acc) -> acc <> ", " <> to_c_type(elem(x, 1)) <> " " <> to_c_identifier(elem(x,0)) end)
+    "PT_THREAD(#{scoped_proc_name(context, proc_name)}(struct pt *pt#{arglist}))"
+  end
+
+  defp get_proc_param_type(context, param) do
+    arg_info = Enum.find(context.proc_args[context.proc_name], fn(x) -> elem(x, 0) == param end)
+    elem(arg_info, 1)
+  end
+
   @doc """
   Generate the appropriate thread based on the "hat" block in the script
   """
@@ -198,9 +307,12 @@ defmodule Scratchcc do
       |> gen_script_body(body)
 
     {context, {body_code,_type}} = pop_code(context)
+    local_var_decls = Enum.join(Enum.uniq(context.locals))
+
     code = """
     PT_THREAD(#{prefix}_thread(struct pt *pt))
     {
+        #{local_var_decls}
         PT_BEGIN(pt);
         #{body_code}
         PT_WAIT_UNTIL(pt, 0);/* PT_END will restart, so wait forever */
@@ -208,8 +320,38 @@ defmodule Scratchcc do
     }
     """
 
-    context |> push_code({code,nil})
+    context
+      |> clear_locals
+      |> push_code({code,nil})
   end
+
+  def gen_script_thread(context, [["procDef", proc_name, input_names, default_values, _] | body]) do
+    scoped_name = scoped_proc_name(context, proc_name)
+    decl = get_proc_declaration(context, proc_name)
+
+    context =
+      context
+      |> start_proc(proc_name)
+      |> gen_script_body(body)
+      |> end_proc
+    {context, {body_code,_type}} = pop_code(context)
+
+    local_var_decls = Enum.join(Enum.uniq(context.locals))
+
+    proc_code = """
+    #{decl}
+    {
+        #{local_var_decls}
+        PT_BEGIN(pt);
+        #{body_code}
+        PT_END(pt);
+    }
+    """
+    context
+      |> clear_locals
+      |> push_code({proc_code, nil})
+  end
+
   def gen_script_thread(context, _blocks) do
     # Ignore all other unrecognized scratch "hat" blocks. These usually
     # aren't hat blocks and are just random blocks hanging around while
@@ -245,6 +387,19 @@ defmodule Scratchcc do
       |> inc_scope
       |> gen_script_body(rest)
   end
+
+  defp inc_repeat_counter_var(context) do
+    %{context | :repeat_counter_var => context.repeat_counter_var + 1}
+  end
+
+  defp add_repeat_loop_var(context) do
+    repeat_loop_var = "repeat_loop_var_#{context.repeat_counter_var}"
+    context
+     |> inc_repeat_counter_var
+     |> add_global("static unsigned long #{repeat_loop_var};")
+     |> (&{&1, repeat_loop_var}).()
+  end
+
 
   @doc """
   Generate the code for a non-hat block.
@@ -427,19 +582,6 @@ defmodule Scratchcc do
       context |> push_stmt("PT_WAIT_UNTIL(pt, 0); /* Empty doForever loop */\n")
     end
   end
-  
-  defp inc_repeat_counter_var(context) do
-    %{context | :repeat_counter_var => context.repeat_counter_var + 1}
-  end
-
-  defp add_repeat_loop_var(context) do
-    repeat_loop_var = "repeat_loop_var_#{context.repeat_counter_var}"
-    context 
-     |> inc_repeat_counter_var 
-     |> add_global("static unsigned long #{repeat_loop_var};")
-     |> (&{&1, repeat_loop_var}).()
-  end
-
   def gen_script_block(context, ["doRepeat", num_repetitions, loop_contents]) do
     context = context |> gen_script_body(loop_contents)
     {context, {loop_code, _type}} = pop_code(context)
@@ -450,6 +592,32 @@ defmodule Scratchcc do
     else
       context |> push_stmt("PT_WAIT_UNTIL(pt, 0); /* Empty doRepeat loop */\n")
     end
+  end
+  def gen_script_block(context, ["call", proc_name | args]) do
+    pt_var = "#{to_c_identifier(proc_name)}_pt"
+    proc_arg_info = context.proc_args[proc_name]
+    typed_args = List.zip([args, Enum.map(proc_arg_info, &elem(&1,1))])
+    context = List.foldr(typed_args, context, fn(arg, context) ->
+                                                context |> gen_script_block(elem(arg,0)) |> top_code_to_type(elem(arg,1)) end)
+    {context, code_for_each_arg} = List.foldr(args, {context, []},
+        fn(_, context_result) ->
+            old_context = elem(context_result, 0)
+            arg_code_so_far = elem(context_result, 1)
+            {new_context, {arg_code, _type}} = pop_code(old_context)
+            {new_context, arg_code_so_far ++ [arg_code]}
+            end)
+
+    arg_list_code = Enum.reduce(code_for_each_arg, "", fn(x, acc) -> acc <> ", " <> x end)
+
+    context
+    |> add_local("static struct pt #{pt_var};\n")
+    |> push_stmt("PT_SPAWN(pt, &#{pt_var}, #{scoped_proc_name(context, proc_name)}(&#{pt_var}#{arg_list_code}));\n")
+  end
+
+  def gen_script_block(context, ["getParam", name, _]) do
+    type = get_proc_param_type(context, name)
+    context
+      |> push_code({to_c_identifier(name), type})
   end
 
   def gen_script_block(context, ["setVar:to:", varname, value]) do
@@ -563,6 +731,12 @@ defmodule Scratchcc do
   defp push_code_as_type(context, {code, type}, :number) when type == :integer or type == :float do
     push_code(context, {code, type})
   end
+  defp push_code_as_type(context, {code, :boolean}, :string) do
+    push_code(context, {"(#{code}) ? String(\"true\") : String(\"false\")", :string})
+  end
+  defp push_code_as_type(context, {code, :boolean}, type) when type == :integer or type == :float or type == :number do
+    push_code(context, {"(#{code}) ? 1 : 0", type})
+  end
 
   # Normalize GPIO values
   defp gpio_value({"\"high\"", :string}), do: 1
@@ -625,6 +799,6 @@ defmodule Scratchcc do
 
     # TODO: Add boolean type??
     context |>
-      push_code({"((#{common_a_code}) #{test_op} (#{common_b_code}))", :integer})
+      push_code({"((#{common_a_code}) #{test_op} (#{common_b_code}))", :boolean})
   end
 end
